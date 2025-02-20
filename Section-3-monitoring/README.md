@@ -126,4 +126,5 @@ Created a real-time dashboard for CPU, Memory, and Network usage
 Configured Slack alerts for CPU threshold breaches
 Automated deployment using Ansible and GitHub Actions
 
-Monitoring is now fully set up for our application
+Monitoring is now fully set up for our application and the pipeline will only
+trigger when its been pushed to 'infra branch' to avoid conflicts and runner misuse
