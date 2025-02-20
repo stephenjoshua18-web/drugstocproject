@@ -1,0 +1,7 @@
+- name: Setup Monitoring with Prometheus and Grafana
+  hosts: monitoring
+  become: yes
+  roles:
+    - prometheus
+    - node_exporter
+    - grafana

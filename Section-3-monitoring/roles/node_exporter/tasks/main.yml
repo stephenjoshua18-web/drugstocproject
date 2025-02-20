@@ -1,0 +1,50 @@
+- name: Install Node Exporter
+  hosts: monitoring
+  become: true
+  tasks:
+    - name: Update Package Cache
+      apt:
+        update_cache: yes
+
+    - name: Download Node Exporter
+      ansible.builtin.shell: |
+        wget https://github.com/prometheus/node_exporter/releases/latest/download/node_exporter-linux-amd64.tar.gz
+
+    - name: Extract Node Exporter
+      ansible.builtin.shell: |
+        tar -xvf node_exporter-linux-amd64.tar.gz
+        mv node_exporter-*-linux-amd64 /usr/local/node_exporter
+        rm node_exporter-linux-amd64.tar.gz
+
+    - name: Copy Node Exporter Binary
+      ansible.builtin.shell: |
+        ln -s /usr/local/node_exporter/node_exporter /usr/local/bin/node_exporter
+
+    - name: Create Node Exporter Systemd Service
+      copy:
+        dest: /etc/systemd/system/node_exporter.service
+        content: |
+          [Unit]
+          Description=Node Exporter
+          After=network.target
+
+          [Service]
+          User=root
+          ExecStart=/usr/local/bin/node_exporter
+          Restart=always
+
+          [Install]
+          WantedBy=multi-user.target
+      notify: Restart Node Exporter
+
+    - name: Start and Enable Node Exporter Service
+      systemd:
+        name: node_exporter
+        state: started
+        enabled: yes
+
+  handlers:
+    - name: Restart Node Exporter
+      systemd:
+        name: node_exporter
+        state: restarted

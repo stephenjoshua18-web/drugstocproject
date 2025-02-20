@@ -1,0 +1,62 @@
+- name: Install Prometheus
+  hosts: monitoring
+  become: true
+  tasks:
+    - name: Update Package Cache
+      apt:
+        update_cache: yes
+
+    - name: Download Prometheus
+      ansible.builtin.shell: |
+        wget https://github.com/prometheus/prometheus/releases/latest/download/prometheus-linux-amd64.tar.gz
+
+    - name: Extract Prometheus
+      ansible.builtin.shell: |
+        tar -xvf prometheus-linux-amd64.tar.gz
+        mv prometheus-*-linux-amd64 /usr/local/prometheus
+        rm prometheus-linux-amd64.tar.gz
+
+    - name: Copy Prometheus Binary
+      ansible.builtin.shell: |
+        ln -s /usr/local/prometheus/prometheus /usr/local/bin/prometheus
+        ln -s /usr/local/prometheus/promtool /usr/local/bin/promtool
+
+    - name: Create Prometheus Configuration Directory
+      file:
+        path: /etc/prometheus
+        state: directory
+
+    - name: Copy Prometheus Config
+      template:
+        src: prometheus.yml.j2
+        dest: /etc/prometheus/prometheus.yml
+      notify: Restart Prometheus
+
+    - name: Create Prometheus Systemd Service
+      copy:
+        dest: /etc/systemd/system/prometheus.service
+        content: |
+          [Unit]
+          Description=Prometheus Monitoring System
+          After=network.target
+
+          [Service]
+          User=root
+          ExecStart=/usr/local/bin/prometheus --config.file=/etc/prometheus/prometheus.yml --storage.tsdb.path=/var/lib/prometheus --web.listen-address=0.0.0.0:9090
+          Restart=always
+
+          [Install]
+          WantedBy=multi-user.target
+      notify: Restart Prometheus
+
+    - name: Start and Enable Prometheus Service
+      systemd:
+        name: prometheus
+        state: started
+        enabled: yes
+
+  handlers:
+    - name: Restart Prometheus
+      systemd:
+        name: prometheus
+        state: restarted

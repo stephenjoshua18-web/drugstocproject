@@ -1,0 +1,39 @@
+- name: Install Grafana
+  hosts: monitoring
+  become: true
+  tasks:
+    - name: Add Grafana APT Repository Key
+      ansible.builtin.shell: |
+        wget -q -O - https://packages.grafana.com/gpg.key | sudo apt-key add -
+
+    - name: Add Grafana APT Repository
+      ansible.builtin.apt_repository:
+        repo: "deb https://packages.grafana.com/oss/deb stable main"
+        state: present
+
+    - name: Install Grafana
+      ansible.builtin.apt:
+        name: grafana
+        state: present
+        update_cache: yes
+
+    - name: Ensure Grafana Service is Enabled and Started
+      ansible.builtin.systemd:
+        name: grafana-server
+        enabled: yes
+        state: started
+
+    - name: Copy Custom Grafana Configuration
+      template:
+        src: grafana.ini.j2
+        dest: /etc/grafana/grafana.ini
+        owner: grafana
+        group: grafana
+        mode: 0644
+      notify: Restart Grafana
+
+  handlers:
+    - name: Restart Grafana
+      ansible.builtin.systemd:
+        name: grafana-server
+        state: restarted
