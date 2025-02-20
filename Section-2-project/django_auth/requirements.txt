@@ -1,0 +1,5 @@
+Django>=3.0,<4.0
+djangorestframework
+djangorestframework-simplejwt  # For JWT authentication
+dj-rest-auth
+django-cors-headers
