@@ -31,7 +31,7 @@ The CI/CD pipeline is defined in `.github/workflows/deploy.yml`. It automates te
 
 ### **Workflow Trigger**
 
-Unlike Section 1, where the workflow triggers on **push to `main`**, in Section 2, it triggers on push to `staging` to avoid conflicts between different projects.
+Unlike Section 1, where the workflow triggers on push to `main`, in Section 2, it triggers on push to `staging` to avoid conflicts between different projects.
 
 ```yaml
 on:
@@ -40,9 +40,9 @@ on:
       - staging
 ```
 
-### **Steps in the CI/CD Pipeline**
+### Steps in the CI/CD Pipeline
 
-#### **1. Checkout Repository**
+#### 1. Checkout Repository
 
 Clones the repository into the CI/CD runner:
 
@@ -51,7 +51,7 @@ Clones the repository into the CI/CD runner:
   uses: actions/checkout@v3
 ```
 
-#### 2. Set Up Python Environment & Install Dependencies\*\*
+#### 2. Set Up Python Environment & Install Dependencies
 
 ```yaml
 - name: Set up Python
