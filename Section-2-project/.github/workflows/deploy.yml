@@ -3,7 +3,7 @@ name: Django CI/CD Pipeline
 on:
   push:
     branches:
-      - main
+      - staging
 
 jobs:
   lint-and-test:
@@ -22,11 +22,14 @@ jobs:
           python -m pip install --upgrade pip
           pip install -r requirements.txt
 
-      - name: Lint Code
-        run: flake8 .
+      - name: Lint code
+        run: |
+          pip install flake8
+          flake8 . --count --select=E9,F63,F7,F82 --show-source --statistics
 
-      - name: Run Unit Tests
-        run: pytest
+      - name: Run unit tests
+        run: |
+          python django_auth/manage.py test  # Run tests inside django_auth
 
   build-and-push:
     needs: lint-and-test
@@ -46,13 +49,11 @@ jobs:
         run: |
           aws ecr get-login-password --region us-east-1 | docker login --username AWS --password-stdin ${{ secrets.AWS_ECR_REGISTRY }}
 
-      - name: Build and Tag Docker Image
+      - name: Build, Tag, and Push Docker Image
         run: |
-          docker build -t django-app .
-          docker tag django-app:latest ${{ secrets.AWS_ECR_REGISTRY }}/django-app:latest
-
-      - name: Push Docker Image to ECR
-        run: docker push ${{ secrets.AWS_ECR_REGISTRY }}/django-app:latest
+          IMAGE_URI=${{ secrets.AWS_ACCOUNT_ID }}.dkr.ecr.us-east-1.amazonaws.com/backend-drugstoc:latest
+          docker build -t $IMAGE_URI -f ../django_auth/Dockerfile ../
+          docker push $IMAGE_URI
 
   deploy:
     needs: build-and-push
@@ -74,4 +75,4 @@ jobs:
       - name: Deploy to EKS
         run: |
           kubectl apply -f deployment.yaml
-          kubectl apply -f service.yaml
+          kubectl apply -f ingress.yaml
