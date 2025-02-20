@@ -27,7 +27,7 @@ section2/
 
 ## **CI/CD Workflow Explained**
 
-The CI/CD pipeline is defined in `.github/workflows/cicd.yml`. It automates testing, building, pushing, and deploying the application.
+The CI/CD pipeline is defined in `.github/workflows/deploy.yml`. It automates testing, building, pushing, and deploying the application.
 
 ### **Workflow Trigger**
 
