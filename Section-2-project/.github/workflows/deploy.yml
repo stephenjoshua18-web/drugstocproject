@@ -30,6 +30,14 @@ jobs:
         run: |
           python django_auth/manage.py test  # Run tests inside django_auth
 
+name: Build and Push to ECR
+
+on:
+  push:
+    branches:
+      - staging
+
+jobs:
   build-and-push:
     needs: lint-and-test
     runs-on: ubuntu-latest
@@ -42,17 +50,31 @@ jobs:
         with:
           aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
           aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
-          aws-region: us-east-1
+          aws-region: ${{ vars.AWS_REGION }}
 
       - name: Login to AWS ECR
         run: |
-          aws ecr get-login-password --region us-east-1 | docker login --username AWS --password-stdin ${{ secrets.AWS_ECR_REGISTRY }}
+          aws ecr get-login-password --region ${{ vars.AWS_REGION }} | docker login --username AWS --password-stdin ${{ secrets.AWS_ECR_REGISTRY }}
 
       - name: Build, Tag, and Push Docker Image
         run: |
-          IMAGE_URI=${{ secrets.AWS_ACCOUNT_ID }}.dkr.ecr.us-east-1.amazonaws.com/backend-drugstoc:latest
-          docker build -t $IMAGE_URI -f ../django_auth/Dockerfile ../
+          REPOSITORY_NAME=${{ vars.REPOSITORY_NAME }}
+          IMAGE_TAG=$(echo $GITHUB_SHA | cut -c1-7)  # Shorten commit SHA for tagging
+          ECR_REGISTRY=${{ secrets.AWS_ACCOUNT_ID }}.dkr.ecr.us-east-1.amazonaws.com
+          IMAGE_URI=$ECR_REGISTRY/$REPOSITORY_NAME:$IMAGE_TAG
+          
+          echo "Building Docker Image..."
+          docker build -t $IMAGE_URI -f ../django_auth/Dockerfile ./django_auth
+          
+          echo "Pushing to ECR..."
           docker push $IMAGE_URI
+          
+          echo "Tagging latest..."
+          docker tag $IMAGE_URI $ECR_REGISTRY/$REPOSITORY_NAME:latest
+          docker push $ECR_REGISTRY/$REPOSITORY_NAME:latest
+
+      - name: Output Image URI
+        run: echo "Image pushed to: $ECR_REGISTRY/$REPOSITORY_NAME:$IMAGE_TAG"
 
   deploy:
     needs: build-and-push
@@ -66,10 +88,10 @@ jobs:
         with:
           aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
           aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
-          aws-region: us-east-1
+          aws-region: ${{ vars.AWS_REGION }}
 
       - name: Update Kubeconfig
-        run: aws eks update-kubeconfig --region us-east-1 --name my-eks-cluster
+        run: aws eks update-kubeconfig --region ${{ vars.AWS_REGION }} --name ${{ vars.CLUSTER_NAME }}
 
       - name: Deploy to EKS
         run: |
