@@ -1,0 +1,1 @@
+grafana_api_key: "{{ lookup('env', 'GRAFANA_API_KEY') }}"

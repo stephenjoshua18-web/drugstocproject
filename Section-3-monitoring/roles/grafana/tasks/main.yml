@@ -32,6 +32,70 @@
         mode: 0644
       notify: Restart Grafana
 
+- name: Add Prometheus as Data Source
+  ansible.builtin.shell: |
+    curl -X POST http://localhost:3000/api/datasources \
+    -H "Content-Type: application/json" \
+    -H "Authorization: Bearer ${{ secrets.GRAFANA_API_KEY }}" \
+    -d '{
+      "name": "Prometheus",
+      "type": "prometheus",
+      "url": "http://localhost:9090",
+      "access": "proxy",
+      "isDefault": true
+    }'
+
+  
+  - name: Configure Slack Notification Channel
+  ansible.builtin.uri:
+    url: "http://{{ ansible_host }}:3000/api/alert-notifications"
+    method: POST
+    headers:
+      Content-Type: "application/json"
+      Authorization: "Bearer {{ grafana_api_key }}"
+    body: >
+      {
+        "name": "Slack Alerts",
+        "type": "slack",
+        "settings": {
+          "url": "{{ slack_webhook_url }}",
+        "username": "Grafana",
+        "channel": "#engineering",        }
+      }
+    body_format: json
+    status_code: 200, 201
+  register: slack_response
+
+- debug:
+    msg: "Slack alert setup response: {{ slack_response }}"
+
+- name: Configure High CPU Usage Alert
+  ansible.builtin.uri:
+    url: "http://{{ ansible_host }}:3000/api/alerts"
+    method: POST
+    headers:
+      Content-Type: "application/json"
+      Authorization: "Bearer {{ grafana_api_key }}"
+    body: >
+      {
+        "name": "High CPU Usage Alert",
+        "condition": "query(A, 5m, now) > 80",
+        "datasourceUid": "prometheus",
+        "targets": [{
+          "expr": "100 - (avg by (instance) (rate(node_cpu_seconds_total{mode=\"idle\"}[5m])) * 100)",
+          "refId": "A"
+        }],
+        "notifications": [{
+          "uid": "slack-alert"
+        }]
+      }
+    body_format: json
+    status_code: 200, 201
+  register: alert_response
+
+- debug:
+    msg: "CPU alert setup response: {{ alert_response }}"
+
   handlers:
     - name: Restart Grafana
       ansible.builtin.systemd:
